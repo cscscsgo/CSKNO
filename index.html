@@ -573,19 +573,28 @@ function mergeNotes(localList, remoteList) {
   return Object.values(map).sort(function(a, b) { return b.updatedAt - a.updatedAt; });
 }
 
+function utf8btoa(str) {
+  // Safe UTF-8 to base64 encoding
+  return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(m, p) {
+    return String.fromCharCode('0x' + p);
+  }));
+}
+
 function syncPull() {
   if (!syncToken) return Promise.resolve(null);
   var url = 'https://raw.githubusercontent.com/' + SYNC_OWNER + '/' + SYNC_REPO + '/main/' + SYNC_FILE;
   return fetch(url, { cache: 'no-store' })
     .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (r.status === 404) return null; // File doesn't exist yet, first sync
+      if (!r.ok) throw new Error('拉取失败 HTTP ' + r.status);
       return r.json();
     })
     .then(function(data) {
-      if (!Array.isArray(data)) throw new Error('Invalid format');
-      // Also fetch SHA from API
+      if (!data) return null; // No remote data
+      if (!Array.isArray(data)) throw new Error('数据格式错误');
+      // Also fetch SHA from API for later updates
       return fetch('https://api.github.com/repos/' + SYNC_OWNER + '/' + SYNC_REPO + '/contents/' + SYNC_FILE, {
-        headers: { 'Authorization': 'Bearer ' + syncToken, 'Accept': 'application/vnd.github+json' }
+        headers: { 'Authorization': 'Bearer ' + syncToken, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }
       }).then(function(r2) {
         if (r2.ok) { return r2.json().then(function(d) { syncSha = d.sha; return data; }); }
         syncSha = null; return data;
@@ -599,13 +608,13 @@ function syncPush() {
   var content = JSON.stringify(notes, null, 2);
   var body = {
     message: '☁️ 同步笔记 ' + new Date().toLocaleString('zh-CN'),
-    content: btoa(unescape(encodeURIComponent(content)))
+    content: utf8btoa(content)
   };
   if (syncSha) body.sha = syncSha;
 
   return fetch('https://api.github.com/repos/' + SYNC_OWNER + '/' + SYNC_REPO + '/contents/' + SYNC_FILE, {
     method: 'PUT',
-    headers: { 'Authorization': 'Bearer ' + syncToken, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' },
+    headers: { 'Authorization': 'Bearer ' + syncToken, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
     body: JSON.stringify(body)
   }).then(function(r) {
     if (!r.ok) return r.json().then(function(d) { throw new Error(d.message || 'Push failed'); });
