@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#eaf5ef">
+<title>📚 知识库</title>
+
+<style>
+/* ============================================================
+   1. VARIABLES
+   ============================================================ */
+:root {
+  --green:        #4a9c6c;
+  --green-dark:   #3b7d55;
+  --green-light:  #e8f5ee;
+  --green-pale:   #f4faf6;
+  --bg:           #f2f5f0;
+  --surface:      #ffffff;
+  --surface2:     #f9faf8;
+  --border:       #dde5d8;
+  --border2:      #c4d3bf;
+  --text:         #2a3c2c;
+  --text2:        #5a6b55;
+  --text3:        #899986;
+  --orange:       #e0864a;
+  --orange-light: #fef5ee;
+  --blue:         #5b8cbd;
+  --blue-light:   #eaf2fa;
+  --red:          #cc6a60;
+  --radius:       12px;
+  --radius-sm:    8px;
+  --shadow:       0 2px 12px rgba(0,0,0,0.06);
+  --shadow-lg:    0 6px 24px rgba(0,0,0,0.1);
+  --font:         -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Noto Sans SC",sans-serif;
+  --safe-bottom:  env(safe-area-inset-bottom, 0px);
+  --transition:   0.15s ease;
+}
+
+/* ============================================================
+   2. RESET & BASE
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;}
+
+body::before{
+  content:'';position:fixed;inset:0;z-index:-1;opacity:.3;pointer-events:none;
+  background:
+    radial-gradient(ellipse at 20% 15%, #c8e0d0 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 80%, #d0dce8 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, #ede8d4 0%, transparent 60%);
+}
+
+/* ============================================================
+   3. APP SHELL
+   ============================================================ */
+.app{display:flex;height:100vh;height:100dvh;overflow:hidden;position:relative;}
+
+/* ============================================================
+   4. SIDEBAR
+   ============================================================ */
+.sidebar{
+  width:300px;min-width:300px;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;z-index:40;box-shadow:var(--shadow);
+}
+.sidebar-header{
+  padding:18px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(135deg,var(--surface2),var(--green-pale));
+}
+.sidebar-header h1{font-size:18px;font-weight:700;display:flex;align-items:center;gap:6px;color:var(--green);}
+
+.dir-tree{flex:1;overflow-y:auto;padding:6px 0;-webkit-overflow-scrolling:touch;}
+.dir-section{margin-bottom:2px;}
+.dir-section-header{
+  display:flex;align-items:center;gap:8px;padding:10px 20px;cursor:pointer;
+  font-size:13px;font-weight:600;color:var(--text2);user-select:none;transition:background var(--transition);
+  min-height:44px;
+}
+.dir-section-header:active{background:var(--bg);}
+.dir-section-header .arrow{font-size:10px;transition:transform .2s;color:var(--text3);flex-shrink:0;}
+.dir-section-header .arrow.open{transform:rotate(90deg);}
+.dir-section-header .count{font-size:11px;color:var(--text3);margin-left:auto;background:var(--bg);padding:2px 8px;border-radius:10px;}
+.dir-items{overflow:hidden;transition:max-height .3s;}
+.dir-items.collapsed{max-height:0!important;}
+.dir-item{
+  display:flex;align-items:center;gap:8px;padding:10px 20px 10px 38px;cursor:pointer;
+  font-size:13px;color:var(--text2);border-left:3px solid transparent;transition:all var(--transition);
+  min-height:40px;
+}
+.dir-item:active{background:var(--green-pale);}
+.dir-item.active{background:var(--green-light);color:var(--green);border-left-color:var(--green);font-weight:600;}
+
+.dir-tag-section{border-top:1px solid var(--border);margin-top:8px;padding-top:6px;}
+.dir-tag-header{padding:10px 20px;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px;}
+.dir-tag-list{padding:0 14px 8px;display:flex;flex-wrap:wrap;gap:6px;}
+.dir-tag{
+  padding:5px 12px;border-radius:14px;font-size:11px;cursor:pointer;min-height:30px;
+  border:1px solid var(--border);background:var(--surface2);color:var(--text2);transition:all var(--transition);
+  display:inline-flex;align-items:center;
+}
+.dir-tag:active{background:var(--green-light);}
+.dir-tag.active{background:var(--green-light);color:var(--green);border-color:var(--green);font-weight:600;}
+
+.sidebar-footer{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:6px;background:var(--surface2);}
+.sidebar-footer .btn{flex:1;justify-content:center;}
+
+/* ============================================================
+   5. TOP BAR
+   ============================================================ */
+.topbar{
+  height:56px;min-height:56px;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;padding:0 16px;box-shadow:0 1px 4px rgba(0,0,0,0.04);z-index:5;
+}
+.topbar .menu-btn{display:none;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);padding:8px;min-width:44px;min-height:44px;}
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.breadcrumb span.home{cursor:pointer;color:var(--green);font-weight:600;flex-shrink:0;}
+.breadcrumb span.home:active{opacity:.7;}
+.breadcrumb .sep{color:var(--text3);flex-shrink:0;}
+.breadcrumb .cur{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.search-box{
+  flex:1;display:flex;align-items:center;max-width:420px;
+  background:var(--bg);border:2px solid var(--border2);border-radius:22px;
+  padding:3px 3px 3px 14px;transition:all .2s;margin:0 auto;
+}
+.search-box:focus-within{border-color:var(--green);background:#fff;box-shadow:0 0 0 4px rgba(74,156,108,0.1);}
+.search-box .s-icon{color:var(--text3);font-size:15px;flex-shrink:0;}
+.search-box input{flex:1;border:none;outline:none;background:transparent;font-size:14px;color:var(--text);padding:4px 0;min-width:0;}
+.search-box input::placeholder{color:var(--text3);}
+.search-box .s-clear{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:6px 10px;display:none;border-radius:50%;min-width:32px;min-height:32px;}
+.search-box .s-clear.show{display:block;}
+
+/* ============================================================
+   6. MAIN AREA
+   ============================================================ */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ============================================================
+   7. BUTTONS
+   ============================================================ */
+.btn{padding:8px 18px;border:none;border-radius:20px;cursor:pointer;font-size:13px;font-weight:600;transition:all var(--transition);display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-family:var(--font);min-height:36px;}
+.btn-primary{background:var(--green);color:#fff;}
+.btn-primary:active{background:var(--green-dark);transform:scale(.97);}
+.btn-outline{background:transparent;border:1.5px solid var(--border2);color:var(--text2);}
+.btn-outline:active{background:var(--surface2);border-color:var(--green);}
+.btn-danger{background:var(--red);color:#fff;}
+.btn-danger:active{opacity:.85;transform:scale(.97);}
+.btn-sm{padding:5px 14px;font-size:11px;min-height:30px;}
+.btn-icon{width:36px;height:36px;padding:0;border-radius:50%;background:transparent;border:none;cursor:pointer;color:var(--text2);font-size:18px;display:inline-flex;align-items:center;justify-content:center;transition:all var(--transition);flex-shrink:0;}
+.btn-icon:active{background:var(--bg);}
+.btn-icon.danger{color:var(--red);}
+.btn-new{flex-shrink:0;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;}
+
+/* ============================================================
+   8. DASHBOARD
+   ============================================================ */
+.dashboard{flex:1;overflow-y:auto;padding:20px 24px calc(20px + var(--safe-bottom));-webkit-overflow-scrolling:touch;}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.stat-card{
+  background:var(--surface);border-radius:var(--radius);padding:16px 18px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;align-items:center;gap:12px;
+  transition:transform var(--transition),box-shadow var(--transition);cursor:default;
+}
+.stat-card:active{transform:scale(.98);}
+.stat-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.stat-icon.g{background:var(--green-light);}
+.stat-icon.o{background:var(--orange-light);}
+.stat-icon.b{background:var(--blue-light);}
+.stat-info .num{font-size:24px;font-weight:800;color:var(--text);line-height:1.1;}
+.stat-info .lbl{font-size:11px;color:var(--text3);}
+
+.section-head{display:flex;align-items:center;gap:10px;margin:24px 0 14px;}
+.section-head:first-child{margin-top:0;}
+.section-head h2{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;}
+.section-head .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dot.g{background:var(--green);} .dot.o{background:var(--orange);} .dot.b{background:var(--blue);}
+
+/* ============================================================
+   9. NOTE CARDS
+   ============================================================ */
+.note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+.note-card{
+  background:var(--surface);border-radius:var(--radius);padding:18px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.04);cursor:pointer;transition:all var(--transition);
+  border:1.5px solid transparent;position:relative;overflow:hidden;
+}
+.note-card:hover{border-color:var(--border2);}
+.note-card:active{transform:scale(.98);}
+.note-card .card-badge{
+  position:absolute;top:0;right:0;padding:3px 10px;font-size:10px;font-weight:600;
+  border-radius:0 var(--radius) 0 var(--radius-sm);color:#fff;
+}
+.card-badge.note{background:var(--green);}
+.card-badge.video{background:var(--orange);}
+.card-badge.knowledge{background:var(--blue);}
+.note-card .card-emoji{font-size:26px;margin-bottom:8px;display:block;}
+.note-card .card-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.note-card .card-desc{font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:8px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.note-card .card-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;}
+.note-card .card-tags span{padding:2px 8px;border-radius:8px;font-size:10px;background:var(--bg);color:var(--text2);}
+.note-card .card-foot{font-size:10px;color:var(--text3);display:flex;justify-content:space-between;align-items:center;}
+
+/* ---- Expanded Card (inline editing) ---- */
+.note-card.expanded{
+  grid-column: 1 / -1;
+  cursor: default;
+  border:2px solid var(--green);
+  box-shadow:var(--shadow-lg);
+  transform:none !important;
+}
+.note-card .card-edit{display:none;}
+.note-card.expanded .card-edit{display:block;}
+.note-card.expanded .card-display{display:none;}
+
+.card-edit-title{
+  width:100%;border:none;border-bottom:2px solid var(--border);
+  font-size:20px;font-weight:700;outline:none;background:transparent;
+  font-family:var(--font);color:var(--text);padding:0 0 8px;margin-bottom:14px;
+}
+.card-edit-title:focus{border-bottom-color:var(--green);}
+.card-edit-meta{
+  display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;
+}
+.card-edit-meta select{
+  padding:6px 14px;border:1.5px solid var(--border2);border-radius:16px;
+  font-size:13px;outline:none;background:var(--surface);color:var(--text2);
+  font-family:var(--font);cursor:pointer;
+}
+.card-edit-meta select:focus{border-color:var(--green);}
+.card-edit-meta .card-edit-video{
+  flex:1;min-width:150px;padding:7px 14px;
+  border:1.5px solid var(--border2);border-radius:16px;
+  font-size:12px;outline:none;font-family:var(--font);
+}
+.card-edit-meta .card-edit-video:focus{border-color:var(--orange);}
+
+.card-edit-tags{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;
+}
+.card-edit-tag-chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+.card-edit-tag-chips .chip{
+  display:inline-flex;align-items:center;gap:3px;
+  padding:3px 10px;border-radius:12px;font-size:11px;
+  background:var(--green-light);color:var(--green);
+}
+.card-edit-tag-chips .chip .x{
+  font-weight:bold;font-size:14px;cursor:pointer;opacity:.6;padding:0 2px;
+}
+.card-edit-tag-chips .chip .x:hover{opacity:1;color:var(--red);}
+.card-edit-tag-input{
+  border:none;outline:none;font-size:12px;padding:4px 6px;
+  min-width:80px;flex:1;background:transparent;font-family:var(--font);
+}
+
+.card-edit-content{
+  width:100%;min-height:220px;border:1.5px solid var(--border2);
+  border-radius:var(--radius-sm);padding:14px;font-family:var(--font);
+  font-size:15px;line-height:1.9;resize:vertical;outline:none;color:var(--text);
+  background:var(--surface);
+}
+.card-edit-content:focus{
+  border-color:var(--green);
+  box-shadow:0 0 0 4px rgba(74,156,108,0.08);
+}
+.card-edit-actions{
+  display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap;
+}
+
+.empty-dash{text-align:center;padding:50px 16px;color:var(--text3);}
+.empty-dash .icon{font-size:64px;margin-bottom:12px;opacity:.7;}
+.empty-dash h3{font-size:17px;color:var(--text2);margin-bottom:6px;}
+.empty-dash p{font-size:13px;margin-bottom:18px;}
+
+/* ============================================================
+   10. TOAST & OVERLAY
+   ============================================================ */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);padding:10px 24px;border-radius:20px;color:#fff;font-size:13px;font-weight:600;z-index:200;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast-ok{background:var(--green);}
+.toast-err{background:var(--red);}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:35;}
+.overlay.on{display:block;}
+
+/* ============================================================
+   11. SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#c8d5c0;border-radius:10px;}
+
+/* ============================================================
+   12. RESPONSIVE
+   ============================================================ */
+@media(max-width:768px){
+  .sidebar{
+    position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);height:100dvh;
+    width:280px;min-width:280px;max-width:85vw;
+  }
+  .sidebar.open{transform:translateX(0);}
+
+  .topbar .menu-btn{display:flex;align-items:center;justify-content:center;}
+  .topbar{padding:0 10px;gap:8px;}
+  .btn-new .btn-text-short{display:inline;}
+  .btn-new .btn-text-full{display:none;}
+
+  .search-box{max-width:none;}
+
+  .dashboard{padding:14px 12px calc(80px + var(--safe-bottom));}
+  .stats-row{grid-template-columns:repeat(2,1fr);gap:8px;}
+  .stat-card{padding:12px 14px;gap:8px;}
+  .stat-icon{width:36px;height:36px;border-radius:8px;font-size:18px;}
+  .stat-info .num{font-size:20px;}
+
+  .note-grid{grid-template-columns:1fr;gap:10px;}
+  .note-card{padding:14px 16px;}
+  .note-card .card-emoji{font-size:22px;margin-bottom:4px;}
+
+  .card-edit-title{font-size:17px;}
+  .card-edit-meta{flex-direction:column;align-items:stretch;}
+  .card-edit-meta .card-edit-video{min-width:0;}
+  .card-edit-content{min-height:180px;font-size:14px;}
+  .card-edit-actions{justify-content:space-between;}
+
+  .breadcrumb{font-size:12px;}
+  .section-head h2{font-size:14px;}
+}
+
+@media(min-width:769px){
+  .btn-new .btn-text-short{display:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Overlay (mobile sidebar backdrop) -->
+  <div class="overlay" id="overlay"></div>
+
+  <!-- ====== Sidebar ====== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1>📚 知识库</h1>
+      <button class="btn btn-primary btn-sm" data-action="createNote">＋ 新建</button>
+    </div>
+    <nav class="dir-tree" id="dirTree">
+      <div class="dir-section">
+        <div class="dir-section-header" data-action="goDashboard" id="dirHome" style="font-size:14px;">🏠 总目录</div>
+      </div>
+      <div class="dir-section" id="gNote">
+        <div class="dir-section-header" data-action="toggleDir"><span class="arrow open">▶</span> 📝 图文笔记 <span class="count" id="cNote">0</span></div>
+        <div class="dir-items" id="iNote"></div>
+      </div>
+      <div class="dir-section" id="gVideo">
+        <div class="dir-section-header" data-action="toggleDir"><span class="arrow open">▶</span> 🎬 视频笔记 <span class="count" id="cVideo">0</span></div>
+        <div class="dir-items" id="iVideo"></div>
+      </div>
+      <div class="dir-section" id="gKnowledge">
+        <div class="dir-section-header" data-action="toggleDir"><span class="arrow open">▶</span> 💡 知识点 <span class="count" id="cKnowledge">0</span></div>
+        <div class="dir-items" id="iKnowledge"></div>
+      </div>
+      <div class="dir-tag-section">
+        <div class="dir-tag-header">🏷️ 标签</div>
+        <div class="dir-tag-list" id="tagList"></div>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn btn-outline btn-sm" data-action="exportData">📤 导出备份</button>
+      <button class="btn btn-outline btn-sm" data-action="importData">📥 导入</button>
+      <input type="file" id="importFile" accept=".html,.json" style="display:none">
+    </div>
+  </aside>
+
+  <!-- ====== Main ====== -->
+  <main class="main" id="main">
+
+    <!-- Top Bar -->
+    <header class="topbar" id="topbar">
+      <button class="menu-btn" data-action="toggleSidebar">☰</button>
+      <div class="breadcrumb">
+        <span class="home" data-action="goDashboard">🏠 总目录</span>
+        <span class="sep" id="bcSep" style="display:none;">/</span>
+        <span class="cur" id="bcCur" style="display:none;"></span>
+      </div>
+      <div class="search-box" id="searchBox">
+        <span class="s-icon">🔍</span>
+        <input type="search" id="searchInput" placeholder="搜索…" autocomplete="off">
+        <button class="s-clear" id="searchClear">✕</button>
+      </div>
+      <button class="btn btn-primary btn-new" data-action="createNote">
+        <span class="btn-text-full">＋ 新建笔记</span><span class="btn-text-short">＋</span>
+      </button>
+    </header>
+
+    <!-- Dashboard (cards + inline editing) -->
+    <div class="dashboard" id="dashboard"></div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =================================================================
+   1. STATE & CONSTANTS
+   ================================================================= */
+const STORE_KEY = 'kb2_data';
+let notes          = [];
+let expandedCardId = null;
+let activeTag      = null;
+
+/* =================================================================
+   2. DOM REFERENCES — cached once at init
+   ================================================================= */
+const $ = {};
+
+function cacheDom() {
+  [
+    'sidebar','overlay','dirTree','dirHome',
+    'iNote','iVideo','iKnowledge','cNote','cVideo','cKnowledge',
+    'tagList','gNote','gVideo','gKnowledge',
+    'main','topbar','dashboard',
+    'searchInput','searchClear','searchBox',
+    'bcSep','bcCur','toast','importFile'
+  ].forEach(function(id) { $[id] = document.getElementById(id); });
+}
+
+/* =================================================================
+   3. UTILITIES
+   ================================================================= */
+function genId()  { return 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+function debounce(fn, ms) {
+  var timer;
+  function debounced() {
+    var ctx = this, args = arguments;
+    clearTimeout(timer);
+    timer = setTimeout(function() { timer = null; fn.apply(ctx, args); }, ms);
+  }
+  debounced.flush = function() { if (timer) { clearTimeout(timer); timer = null; fn(); } };
+  return debounced;
+}
+
+function esc(s)   { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escA(s)  { return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+function emoji(t) { return t === 'video' ? '🎬' : t === 'knowledge' ? '💡' : '📝'; }
+
+function plain(c) {
+  if (!c) return '';
+  try { var d = JSON.parse(c); return d.ops ? d.ops.map(function(o) { return o.insert || ''; }).join('') : (d.text || ''); }
+  catch(e) { var div = document.createElement('div'); div.innerHTML = c; return div.textContent || ''; }
+}
+
+function allTags() {
+  var s = new Set();
+  notes.forEach(function(n) { n.tags.forEach(function(t) { s.add(t); }); });
+  return Array.from(s).sort();
+}
+
+function showToast(msg, type) {
+  type = type || 'ok';
+  var t = $.toast;
+  t.textContent = msg; t.className = 'toast toast-' + type;
+  setTimeout(function() { t.classList.add('on'); }, 10);
+  clearTimeout(t._tid);
+  t._tid = setTimeout(function() { t.classList.remove('on'); }, 2000);
+}
+
+/* =================================================================
+   4. PERSISTENCE
+   ================================================================= */
+function fixNote(n) {
+  return {
+    id: n.id || genId(), title: n.title || '未命名', type: n.type || 'note',
+    content: n.content || '', tags: n.tags || [], videoUrl: n.videoUrl || '',
+    createdAt: n.createdAt || Date.now(), updatedAt: n.updatedAt || Date.now()
+  };
+}
+
+function loadNotes() {
+  if (typeof __KB_DATA__ !== 'undefined' && Array.isArray(__KB_DATA__) && __KB_DATA__.length > 0) {
+    notes = __KB_DATA__.map(fixNote);
+    persist();
+    return;
+  }
+  try { var r = localStorage.getItem(STORE_KEY); notes = r ? JSON.parse(r).map(fixNote) : []; }
+  catch(e) { notes = []; }
+}
+
+function getDataJson() { return JSON.stringify(notes); }
+
+function persist() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(notes)); }
+  catch(e) { showToast('存储空间不足，请导出备份后清理旧数据', 'err'); }
+}
+
+/* =================================================================
+   5. RENDERING
+   ================================================================= */
+
+// ---- Dashboard ----
+function renderDash(expandedId) {
+  expandedId = expandedId || expandedCardId;
+  var sq = ($.searchInput.value || '').toLowerCase().trim();
+  var list = notes;
+  if (sq) { list = list.filter(function(n) { return n.title.toLowerCase().includes(sq) || n.tags.some(function(t) { return t.toLowerCase().includes(sq); }) || (n.content && plain(n.content).toLowerCase().includes(sq)); }); }
+  if (activeTag) { list = list.filter(function(n) { return n.tags.includes(activeTag); }); }
+
+  if (notes.length === 0) {
+    $.dashboard.innerHTML = '<div class="empty-dash"><div class="icon">📖</div><h3>知识库空空如也</h3><p>点击「＋ 新建」开始记录吧</p><button class="btn btn-primary" data-action="createNote">＋ 新建笔记</button></div>';
+    return;
+  }
+
+  var nn = notes.filter(function(n) { return n.type === 'note'; });
+  var nv = notes.filter(function(n) { return n.type === 'video'; });
+  var nk = notes.filter(function(n) { return n.type === 'knowledge'; });
+  var h = '';
+
+  // Stats
+  h += '<div class="stats-row">' +
+    '<div class="stat-card"><div class="stat-icon g">📝</div><div class="stat-info"><div class="num">' + nn.length + '</div><div class="lbl">图文笔记</div></div></div>' +
+    '<div class="stat-card"><div class="stat-icon o">🎬</div><div class="stat-info"><div class="num">' + nv.length + '</div><div class="lbl">视频笔记</div></div></div>' +
+    '<div class="stat-card"><div class="stat-icon b">💡</div><div class="stat-info"><div class="num">' + nk.length + '</div><div class="lbl">知识点</div></div></div>' +
+    '<div class="stat-card"><div class="stat-icon g">🏷️</div><div class="stat-info"><div class="num">' + allTags().length + '</div><div class="lbl">标签</div></div></div>' +
+  '</div>';
+
+  if (list.length === 0 && (sq || activeTag)) {
+    h += '<div class="empty-dash"><div class="icon">🔍</div><h3>无匹配结果</h3><p>换个关键词或清除筛选试试</p></div>';
+  } else {
+    var show = sq || activeTag ? list : null;
+    if (!show) {
+      [{t:'note',l:'📝 图文笔记',c:'g',a:nn},{t:'video',l:'🎬 视频笔记',c:'o',a:nv},{t:'knowledge',l:'💡 知识点',c:'b',a:nk}].forEach(function(g) {
+        if (!g.a.length) return;
+        h += '<div class="section-head"><h2><span class="dot ' + g.c + '"></span>' + g.l + '<span style="font-size:12px;color:var(--text3);font-weight:400;margin-left:4px;">(' + g.a.length + ')</span></h2></div>';
+        h += '<div class="note-grid">' + g.a.map(function(n) { return cardHTML(n, expandedId); }).join('') + '</div>';
+      });
+    } else {
+      h += '<div class="section-head"><h2>🔍 搜索结果 (' + show.length + ')</h2></div><div class="note-grid">' + show.map(function(n) { return cardHTML(n, expandedId); }).join('') + '</div>';
+    }
+  }
+  $.dashboard.innerHTML = h;
+}
+
+function cardHTML(n, expandedId) {
+  var isExpanded = n.id === expandedId;
+  var pre = n.content ? plain(n.content).slice(0, 100) : '';
+  var dt  = new Date(n.updatedAt).toLocaleDateString('zh-CN', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  var badge = n.type === 'video' ? 'video' : n.type === 'knowledge' ? 'knowledge' : 'note';
+  var blabel = n.type === 'video' ? '视频' : n.type === 'knowledge' ? '知识' : '图文';
+  var fullContent = n.content ? plain(n.content) : '';
+
+  var h = '<div class="note-card' + (isExpanded ? ' expanded' : '') + '" data-id="' + n.id + '">';
+
+  // ---- Display mode ----
+  h += '<div class="card-display">';
+  h += '<span class="card-badge ' + badge + '">' + blabel + '</span>';
+  h += '<span class="card-emoji">' + emoji(n.type) + '</span>';
+  h += '<div class="card-title">' + esc(n.title || '未命名') + '</div>';
+  h += (pre ? '<div class="card-desc">' + esc(pre) + '</div>' : '');
+  h += (n.tags.length ? '<div class="card-tags">' + n.tags.map(function(t) { return '<span>#' + esc(t) + '</span>'; }).join('') + '</div>' : '');
+  h += '<div class="card-foot"><span>' + dt + '</span>' + (n.videoUrl ? '<span>🎥 含视频</span>' : '') + '</div>';
+  h += '</div>';
+
+  // ---- Edit mode ----
+  h += '<div class="card-edit">';
+  // Title
+  h += '<input class="card-edit-title" value="' + escA(n.title || '') + '" placeholder="输入标题…" data-field="title">';
+  // Meta row: type + video URL
+  h += '<div class="card-edit-meta">';
+  h += '<select class="card-edit-type" data-field="type">';
+  h += '<option value="note"' + (n.type === 'note' ? ' selected' : '') + '>📝 图文</option>';
+  h += '<option value="video"' + (n.type === 'video' ? ' selected' : '') + '>🎬 视频</option>';
+  h += '<option value="knowledge"' + (n.type === 'knowledge' ? ' selected' : '') + '>💡 知识</option>';
+  h += '</select>';
+  h += '<input class="card-edit-video" value="' + escA(n.videoUrl || '') + '" placeholder="粘贴视频链接…" data-field="videoUrl"' + (n.type !== 'video' ? ' style="display:none"' : '') + '>';
+  h += '</div>';
+  // Tags
+  h += '<div class="card-edit-tags">';
+  h += '<span class="card-edit-tag-chips">' + n.tags.map(function(t) {
+    return '<span class="chip">' + esc(t) + '<span class="x" data-tag="' + escA(t) + '">&times;</span></span>';
+  }).join('') + '</span>';
+  h += '<input class="card-edit-tag-input" placeholder="添加标签，回车确认…">';
+  h += '</div>';
+  // Content textarea
+  h += '<textarea class="card-edit-content" placeholder="在这里记录…" data-field="content">' + esc(fullContent) + '</textarea>';
+  // Video preview (only if has video)
+  if (n.videoUrl) {
+    var embedH = embedHtml(n.videoUrl);
+    if (embedH) {
+      h += '<div class="card-edit-video-preview" style="margin-top:12px;text-align:center;background:var(--bg);border-radius:var(--radius-sm);padding:12px;">' + embedH + '</div>';
+    }
+  }
+  // Actions
+  h += '<div class="card-edit-actions">';
+  h += '<button class="btn btn-primary btn-sm" data-action="saveCard">💾 保存</button>';
+  h += '<button class="btn btn-outline btn-sm" data-action="cancelEdit">取消</button>';
+  h += '<button class="btn btn-danger btn-sm" data-action="deleteCard" style="margin-left:auto;">🗑️ 删除</button>';
+  h += '</div>';
+  h += '</div>';
+
+  h += '</div>';
+  return h;
+}
+
+// ---- Directory Tree ----
+function renderDir() {
+  var nn = notes.filter(function(n) { return n.type === 'note'; });
+  var nv = notes.filter(function(n) { return n.type === 'video'; });
+  var nk = notes.filter(function(n) { return n.type === 'knowledge'; });
+
+  $.cNote.textContent      = nn.length;
+  $.cVideo.textContent     = nv.length;
+  $.cKnowledge.textContent = nk.length;
+
+  $.iNote.innerHTML      = nn.map(function(n) { return dirItemHTML(n); }).join('');
+  $.iVideo.innerHTML     = nv.map(function(n) { return dirItemHTML(n); }).join('');
+  $.iKnowledge.innerHTML = nk.map(function(n) { return dirItemHTML(n); }).join('');
+
+  if (expandedCardId) {
+    document.querySelectorAll('.dir-item').forEach(function(e) { e.classList.toggle('active', e.dataset.id === expandedCardId); });
+  }
+
+  // Tags
+  var tags = allTags();
+  $.tagList.innerHTML = tags.map(function(t) {
+    return '<span class="dir-tag' + (t === activeTag ? ' active' : '') + '" data-tag="' + escA(t) + '">#' + esc(t) + '</span>';
+  }).join('');
+
+  $.gNote.style.display      = nn.length ? '' : 'none';
+  $.gVideo.style.display     = nv.length ? '' : 'none';
+  $.gKnowledge.style.display = nk.length ? '' : 'none';
+}
+
+function dirItemHTML(n) {
+  return '<div class="dir-item' + (n.id === expandedCardId ? ' active' : '') + '" data-id="' + n.id + '">' +
+    '<span>' + emoji(n.type) + '</span><span>' + esc(n.title || '未命名') + '</span></div>';
+}
+
+// ---- Breadcrumb ----
+function updateBc(note) {
+  if (note) { $.bcSep.style.display = 'inline'; $.bcCur.style.display = 'inline'; $.bcCur.textContent = (note.type === 'video' ? '🎬 ' : note.type === 'knowledge' ? '💡 ' : '📝 ') + '编辑中'; }
+  else      { $.bcSep.style.display = 'none';  $.bcCur.style.display = 'none'; }
+}
+
+/* =================================================================
+   6. INLINE EDITING
+   ================================================================= */
+
+function expandCard(id) {
+  var n = notes.find(function(x) { return x.id === id; });
+  if (!n) return;
+  expandedCardId = id;
+  updateBc(n);
+  renderDash(id);
+  renderDir();
+  closeSidebar();
+  // Scroll to expanded card
+  setTimeout(function() {
+    var card = document.querySelector('.note-card.expanded');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+}
+
+function collapseEdit() {
+  expandedCardId = null;
+  updateBc(null);
+  renderDash();
+  renderDir();
+  document.querySelectorAll('.dir-item').forEach(function(e) { e.classList.remove('active'); });
+}
+
+function saveInlineNote(cardEl) {
+  var id = cardEl.dataset.id;
+  var n = notes.find(function(x) { return x.id === id; });
+  if (!n) return;
+
+  var titleEl   = cardEl.querySelector('.card-edit-title');
+  var typeEl    = cardEl.querySelector('.card-edit-type');
+  var contentEl = cardEl.querySelector('.card-edit-content');
+  var videoEl   = cardEl.querySelector('.card-edit-video');
+
+  n.title    = (titleEl.value || '').trim() || '未命名';
+  n.type     = typeEl.value;
+  n.content  = contentEl.value;
+  n.videoUrl = videoEl ? (videoEl.value || '').trim() : (n.videoUrl || '');
+  n.updatedAt = Date.now();
+
+  persist();
+  expandedCardId = null;
+  updateBc(null);
+  renderDash();
+  renderDir();
+  showToast('已保存');
+}
+
+function deleteInlineNote(cardEl) {
+  var id = cardEl.dataset.id;
+  var n = notes.find(function(x) { return x.id === id; });
+  if (!n) return;
+  if (!confirm('删除「' + (n.title || '未命名') + '」？不可恢复。')) return;
+  notes = notes.filter(function(x) { return x.id !== id; });
+  expandedCardId = null;
+  persist();
+  updateBc(null);
+  renderDash();
+  renderDir();
+  showToast('已删除');
+}
+
+function addTagInline(inputEl) {
+  var tag = inputEl.value.trim();
+  if (!tag) return;
+  var cardEl = inputEl.closest('.note-card');
+  if (!cardEl) return;
+  var id = cardEl.dataset.id;
+  var n = notes.find(function(x) { return x.id === id; });
+  if (!n || n.tags.includes(tag)) { inputEl.value = ''; return; }
+  n.tags.push(tag);
+  n.updatedAt = Date.now();
+  persist();
+  // Update chips DOM without full re-render
+  var chipsEl = cardEl.querySelector('.card-edit-tag-chips');
+  chipsEl.innerHTML += '<span class="chip">' + esc(tag) + '<span class="x" data-tag="' + escA(tag) + '">&times;</span></span>';
+  inputEl.value = '';
+  renderDir();
+}
+
+function removeTagInline(tag, cardEl) {
+  var id = cardEl.dataset.id;
+  var n = notes.find(function(x) { return x.id === id; });
+  if (!n) return;
+  n.tags = n.tags.filter(function(t) { return t !== tag; });
+  n.updatedAt = Date.now();
+  persist();
+  // Update chips DOM
+  var chip = cardEl.querySelector('.card-edit-tag-chips .x[data-tag="' + escA(tag) + '"]');
+  if (chip && chip.parentElement) chip.parentElement.remove();
+  renderDir();
+}
+
+function onTypeChangeInline(selectEl) {
+  var cardEl = selectEl.closest('.note-card');
+  if (!cardEl) return;
+  var videoInput = cardEl.querySelector('.card-edit-video');
+  if (videoInput) {
+    videoInput.style.display = selectEl.value === 'video' ? '' : 'none';
+    if (selectEl.value === 'video') setTimeout(function() { videoInput.focus(); }, 50);
+  }
+}
+
+/* =================================================================
+   7. NOTE CRUD (high-level)
+   ================================================================= */
+function createNote(type) {
+  type = type || 'note';
+  var n = { id: genId(), title: '', type: type, content: '', tags: [], videoUrl: '', createdAt: Date.now(), updatedAt: Date.now() };
+  notes.unshift(n);
+  persist();
+  expandCard(n.id);
+  showToast('已创建，开始编辑吧 ✏️');
+}
+
+function goDashboard() {
+  collapseEdit();
+  $.dirHome.classList.add('active');
+  closeSidebar();
+}
+
+/* =================================================================
+   8. VIDEO EMBED
+   ================================================================= */
+function embedHtml(url) {
+  if (!url) return null;
+  var m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  if (m) return '<iframe width="560" height="315" src="https://www.youtube.com/embed/' + m[1] + '" frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen style="max-width:100%;border-radius:8px;"></iframe>';
+  m = url.match(/bilibili\.com\/video\/(BV[a-zA-Z0-9]+)/);
+  if (m) return '<iframe width="560" height="315" src="https://player.bilibili.com/player.html?bvid=' + m[1] + '" frameborder="0" allowfullscreen style="max-width:100%;border-radius:8px;"></iframe>';
+  m = url.match(/vimeo\.com\/(\d+)/);
+  if (m) return '<iframe width="560" height="315" src="https://player.vimeo.com/video/' + m[1] + '" frameborder="0" allowfullscreen style="max-width:100%;border-radius:8px;"></iframe>';
+  if (/^<iframe/.test(url)) return url;
+  return null;
+}
+
+/* =================================================================
+   9. SEARCH
+   ================================================================= */
+function onSearch() {
+  var val = $.searchInput.value;
+  $.searchClear.classList.toggle('show', val.length > 0);
+  if (expandedCardId) { expandedCardId = null; updateBc(null); }
+  renderDash();
+}
+var onSearchDebounced = debounce(onSearch, 200);
+
+function clearSearch() {
+  $.searchInput.value = '';
+  $.searchClear.classList.remove('show');
+  renderDash();
+}
+
+/* =================================================================
+   10. SIDEBAR
+   ================================================================= */
+function toggleSidebar() {
+  $.sidebar.classList.toggle('open');
+  $.overlay.classList.toggle('on');
+}
+
+function closeSidebar() {
+  $.sidebar.classList.remove('open');
+  $.overlay.classList.remove('on');
+}
+
+function filterTag(tag) {
+  activeTag = activeTag === tag ? null : tag;
+  if (expandedCardId) { expandedCardId = null; updateBc(null); }
+  document.querySelectorAll('#tagList .dir-tag').forEach(function(e) { e.classList.toggle('active', e.textContent.slice(1) === activeTag); });
+  renderDash();
+  renderDir();
+}
+
+function toggleDir(headerEl) {
+  var arrow = headerEl.querySelector('.arrow');
+  var items = headerEl.nextElementSibling;
+  arrow.classList.toggle('open');
+  items.classList.toggle('collapsed');
+  items.style.maxHeight = items.classList.contains('collapsed') ? '0' : items.scrollHeight + 'px';
+}
+
+/* =================================================================
+   11. EVENT BINDINGS
+   ================================================================= */
+function bindEvents() {
+
+  // -- Sidebar: delegation --
+  $.sidebar.addEventListener('click', function(e) {
+    var el = e.target;
+
+    // "createNote" buttons
+    var btn = el.closest('[data-action="createNote"]');
+    if (btn) { createNote(); return; }
+
+    // Export / Import
+    if (el.closest('[data-action="exportData"]')) { exportData(); return; }
+    if (el.closest('[data-action="importData"]')) { $.importFile.click(); return; }
+
+    // Dir section header (toggle or goDashboard)
+    var hdr = el.closest('.dir-section-header');
+    if (hdr) {
+      if (hdr.id === 'dirHome') { goDashboard(); return; }
+      toggleDir(hdr); return;
+    }
+
+    // Dir item → expand card
+    var item = el.closest('.dir-item');
+    if (item && item.dataset.id) { expandCard(item.dataset.id); return; }
+
+    // Tag in sidebar
+    var tag = el.closest('.dir-tag');
+    if (tag && tag.dataset.tag) { filterTag(tag.dataset.tag); return; }
+  });
+
+  // -- Topbar: delegation --
+  $.topbar.addEventListener('click', function(e) {
+    var el = e.target;
+    if (el.closest('[data-action="toggleSidebar"]')) { toggleSidebar(); return; }
+    if (el.closest('[data-action="goDashboard"]'))    { goDashboard(); return; }
+    if (el.closest('[data-action="createNote"]'))     { createNote(); return; }
+  });
+
+  // -- Dashboard: delegation for cards and inline editing --
+  $.dashboard.addEventListener('click', function(e) {
+    var el = e.target;
+
+    // Save button
+    var saveBtn = el.closest('[data-action="saveCard"]');
+    if (saveBtn) {
+      var cardEl = saveBtn.closest('.note-card');
+      if (cardEl) saveInlineNote(cardEl);
+      return;
+    }
+
+    // Cancel button
+    var cancelBtn = el.closest('[data-action="cancelEdit"]');
+    if (cancelBtn) { collapseEdit(); return; }
+
+    // Delete button
+    var deleteBtn = el.closest('[data-action="deleteCard"]');
+    if (deleteBtn) {
+      var cardEl2 = deleteBtn.closest('.note-card');
+      if (cardEl2) deleteInlineNote(cardEl2);
+      return;
+    }
+
+    // Tag chip × (remove tag in expanded card)
+    var xBtn = el.closest('.card-edit-tag-chips .x');
+    if (xBtn && xBtn.dataset.tag) {
+      var cardEl3 = xBtn.closest('.note-card');
+      if (cardEl3) removeTagInline(xBtn.dataset.tag, cardEl3);
+      return;
+    }
+
+    // Click on a card (not expanded) → expand it
+    // Ignore clicks on interactive elements within expanded cards
+    var card = el.closest('.note-card');
+    if (card && !card.classList.contains('expanded')) {
+      expandCard(card.dataset.id);
+      return;
+    }
+
+    // "createNote" from empty state
+    var emptyBtn = el.closest('[data-action="createNote"]');
+    if (emptyBtn) { createNote(); return; }
+  });
+
+  // -- Dashboard: change events (type selector) --
+  $.dashboard.addEventListener('change', function(e) {
+    var el = e.target;
+    if (el.classList.contains('card-edit-type')) {
+      onTypeChangeInline(el);
+    }
+  });
+
+  // -- Dashboard: keydown events (tag input) --
+  $.dashboard.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    var el = e.target;
+    if (el.classList.contains('card-edit-tag-input')) {
+      e.preventDefault();
+      addTagInline(el);
+    }
+  });
+
+  // -- Overlay: tap to close sidebar --
+  $.overlay.addEventListener('click', closeSidebar);
+
+  // -- Search --
+  $.searchInput.addEventListener('input', onSearchDebounced);
+  $.searchClear.addEventListener('click', clearSearch);
+
+  // -- Import file --
+  $.importFile.addEventListener('change', importData);
+}
+
+/* =================================================================
+   12. EXPORT / IMPORT
+   ================================================================= */
+function exportData() {
+  // Collapse any expanded card before export
+  if (expandedCardId) collapseEdit();
+  var dataJson = getDataJson();
+  var doctype  = '<!DOCTYPE html>\n';
+  var pageHtml = doctype + document.documentElement.outerHTML;
+  var dataScript = '\n<script>var __KB_DATA__=' + dataJson + ';</sc' + 'ript>';
+  var exported = pageHtml.replace('</head>', dataScript + '\n</head>');
+
+  var blob = new Blob([exported], { type: 'text/html;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '知识库备份-' + new Date().toISOString().slice(0, 10) + '.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('已导出完整备份（含数据）');
+}
+
+function importData(event) {
+  var file = event.target.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var text = e.target.result;
+    var imported = null;
+
+    // Try __KB_DATA__ from HTML export
+    var m = text.match(/var\s+__KB_DATA__\s*=\s*(\[[\s\S]*?\]);/);
+    if (m) { try { imported = JSON.parse(m[1]); } catch(ex) {} }
+
+    // Try raw JSON
+    if (!imported) {
+      try { var p = JSON.parse(text); if (Array.isArray(p)) imported = p; } catch(ex) {}
+    }
+    if (!imported || !Array.isArray(imported)) {
+      showToast('无法识别文件格式，请使用 .html 备份文件或 .json 文件', 'err');
+      event.target.value = ''; return;
+    }
+
+    if (confirm('导入 ' + imported.length + ' 条笔记。\n「确定」= 合并  「取消」= 覆盖全部')) {
+      var ids = new Set(notes.map(function(n) { return n.id; }));
+      notes = imported.filter(function(n) { return !ids.has(n.id); }).concat(notes);
+    } else {
+      notes = imported;
+    }
+    persist(); goDashboard(); showToast('导入成功');
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+/* =================================================================
+   13. INIT
+   ================================================================= */
+function init() {
+  cacheDom();
+  loadNotes();
+  bindEvents();
+  // Listen for title changes in expanded cards (auto-save to note object, debounced)
+  goDashboard();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
