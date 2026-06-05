@@ -494,12 +494,15 @@ body::before{
 <div class="sync-modal" id="syncModal">
   <div class="modal-bg" data-action="closeSync"></div>
   <div class="modal-card">
-    <h3>🔑 设置 GitHub Token</h3>
+    <h3>📤 上传到云端</h3>
     <p>上传数据到 <code>cscscsgo/CSKNO</code> 需要授权。创建 <a href="https://github.com/settings/tokens?type=beta" target="_blank">GitHub Token</a>，权限选 <b>Read and write access to code</b>，只授权 CSKNO 仓库。</p>
-    <input type="password" id="syncTokenInput" placeholder="粘贴 GitHub Token…">
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input type="password" id="syncTokenInput" placeholder="粘贴 GitHub Token…" style="flex:1;margin-bottom:0;">
+      <button class="btn btn-outline btn-sm" id="btnClearToken" title="清空 Token" style="flex-shrink:0;min-width:36px;padding:6px 10px;">✕</button>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-outline btn-sm" data-action="closeSync">取消</button>
-      <button class="btn btn-primary btn-sm" data-action="saveSyncToken">💾 保存</button>
+      <button class="btn btn-primary btn-sm" data-action="saveSyncToken">📤 上传</button>
     </div>
   </div>
 </div>
@@ -738,6 +741,8 @@ function doPull(silent) {
   // Pull from cloud and merge (no token needed)
   syncStatus = 'syncing'; updateSyncDot();
   syncPull().then(function(remote) {
+    // Save any in-progress edits before merging
+    syncExpandedCard();
     if (remote && remote.length > 0) {
       var before = notes.length;
       notes = mergeNotes(notes, remote);
@@ -757,12 +762,20 @@ function doPull(silent) {
 }
 
 function doPush() {
-  // Push local data to cloud (requires token)
-  if (!syncToken) { showToast('请先设置 GitHub Token', 'err'); openSyncSettings(); return; }
+  // Always open modal for token input + upload
+  openSyncSettings();
+}
+
+function executePush() {
+  // Push local data to cloud (called from modal after token is set)
+  if (!syncToken) { showToast('请先输入 GitHub Token', 'err'); return; }
+  closeSyncSettings();
   syncStatus = 'syncing'; updateSyncDot();
   var merged = false;
   // Pull first for latest SHA, then push
   syncPull().then(function(remote) {
+    // Save any in-progress edits before merging
+    syncExpandedCard();
     if (remote && remote.length > 0) {
       notes = mergeNotes(notes, remote);
       merged = true;
@@ -781,6 +794,14 @@ function doPush() {
   });
 }
 
+function clearSyncToken() {
+  syncToken = '';
+  localStorage.removeItem('kb2_sync_token');
+  $.syncTokenInput.value = '';
+  updateSyncDot();
+  showToast('Token 已清空');
+}
+
 function openSyncSettings() {
   $.syncModal.classList.add('on');
   $.syncTokenInput.value = syncToken;
@@ -796,9 +817,8 @@ function saveSyncToken() {
   if (!token) { showToast('请输入 Token', 'err'); return; }
   syncToken = token;
   localStorage.setItem('kb2_sync_token', token);
-  closeSyncSettings();
   updateSyncDot();
-  showToast('Token 已保存，可点击 📤 上传');
+  executePush();
 }
 
 /* =================================================================
@@ -1022,6 +1042,28 @@ function collapseEdit() {
   document.querySelectorAll('.dir-item').forEach(function(e) { e.classList.remove('active'); });
 }
 
+// Save in-progress edits from expanded card to notes array without re-rendering
+function syncExpandedCard() {
+  if (!expandedCardId) return;
+  var card = document.querySelector('.note-card.expanded');
+  if (!card) return;
+  var n = notes.find(function(x) { return x.id === expandedCardId; });
+  if (!n) return;
+
+  var titleEl   = card.querySelector('.card-edit-title');
+  var typeEl    = card.querySelector('.card-edit-type');
+  var contentEl = card.querySelector('.card-edit-content');
+  var videoEl   = card.querySelector('.card-edit-video');
+
+  n.title    = (titleEl.value || '').trim() || '未命名';
+  n.type     = typeEl.value;
+  n.content  = contentEl.value;
+  if (videoEl) { var v = (videoEl.value || '').trim(); if (v) n.videoUrl = v; }
+  n.updatedAt = Date.now();
+  if (n.syncStatus === 'synced') n.syncStatus = 'modified';
+  persist();
+}
+
 function saveInlineNote(cardEl) {
   var id = cardEl.dataset.id;
   var n = notes.find(function(x) { return x.id === id; });
@@ -1035,7 +1077,7 @@ function saveInlineNote(cardEl) {
   n.title    = (titleEl.value || '').trim() || '未命名';
   n.type     = typeEl.value;
   n.content  = contentEl.value;
-  n.videoUrl = videoEl ? (videoEl.value || '').trim() : (n.videoUrl || '');
+  if (videoEl) { var vv = (videoEl.value || '').trim(); if (vv) n.videoUrl = vv; }
   n.updatedAt = Date.now();
   // Mark as modified if previously synced
   if (n.syncStatus === 'synced') n.syncStatus = 'modified';
@@ -1343,6 +1385,7 @@ function bindEvents() {
   $.syncModal.addEventListener('click', function(e) {
     if (e.target.closest('[data-action="closeSync"]')) { closeSyncSettings(); return; }
     if (e.target.closest('[data-action="saveSyncToken"]')) { saveSyncToken(); return; }
+    if (e.target.closest('#btnClearToken')) { clearSyncToken(); return; }
   });
 
   // -- Sync modal: Enter key to save --
