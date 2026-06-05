@@ -280,11 +280,11 @@ body::before{
 
 /* ---- Sync ---- */
 .sync-btn{position:relative;flex-shrink:0;}
-.sync-btn .sync-dot{position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;transition:background .3s;}
-.sync-dot.ok{background:var(--green);}
-.sync-dot.syncing{background:var(--orange);animation:pulse .8s infinite;}
-.sync-dot.err{background:var(--red);}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+#syncDot{display:inline-block;width:8px;height:8px;border-radius:50%;transition:background .3s;flex-shrink:0;align-self:center;margin-left:2px;}
+#syncDot.ok{background:var(--green);}
+#syncDot.syncing{background:var(--orange);animation:pulse .8s infinite;}
+#syncDot.err{background:var(--red);}
+#btnPush.no-token{opacity:.45;}
 
 /* ---- Settings Modal ---- */
 .sync-modal{display:none;position:fixed;inset:0;z-index:100;align-items:center;justify-content:center;}
@@ -476,9 +476,9 @@ body::before{
       <button class="btn btn-primary btn-new" data-action="createNote">
         <span class="btn-text-full">＋ 新建笔记</span><span class="btn-text-short">＋</span>
       </button>
-      <button class="btn-icon sync-btn" id="syncBtn" data-action="openSync" title="云同步">
-        ☁️<span class="sync-dot" id="syncDot"></span>
-      </button>
+      <button class="btn-icon sync-btn" id="btnPull" title="拉取云端数据">📥</button>
+      <button class="btn-icon sync-btn" id="btnPush" title="上传到云端">📤</button>
+      <span class="sync-dot" id="syncDot"></span>
     </header>
 
     <!-- Dashboard (cards + inline editing) -->
@@ -494,12 +494,12 @@ body::before{
 <div class="sync-modal" id="syncModal">
   <div class="modal-bg" data-action="closeSync"></div>
   <div class="modal-card">
-    <h3>☁️ 云同步设置</h3>
-    <p>使用 GitHub 仓库 <code>cscscsgo/CSKNO</code> 同步数据。需要创建一个 <a href="https://github.com/settings/tokens?type=beta" target="_blank">GitHub Token</a>，权限选择 <b>Read and write access to code</b>，只授权 CSKNO 仓库。</p>
+    <h3>🔑 设置 GitHub Token</h3>
+    <p>上传数据到 <code>cscscsgo/CSKNO</code> 需要授权。创建 <a href="https://github.com/settings/tokens?type=beta" target="_blank">GitHub Token</a>，权限选 <b>Read and write access to code</b>，只授权 CSKNO 仓库。</p>
     <input type="password" id="syncTokenInput" placeholder="粘贴 GitHub Token…">
     <div class="modal-actions">
       <button class="btn btn-outline btn-sm" data-action="closeSync">取消</button>
-      <button class="btn btn-primary btn-sm" data-action="saveSyncToken">💾 保存并同步</button>
+      <button class="btn btn-primary btn-sm" data-action="saveSyncToken">💾 保存</button>
     </div>
   </div>
 </div>
@@ -536,7 +536,7 @@ function cacheDom() {
     'main','topbar','dashboard',
     'searchInput','searchClear','searchBox',
     'bcSep','bcCur','toast','importFile',
-    'syncBtn','syncDot','syncModal','syncTokenInput','syncFilterList'
+    'btnPull','btnPush','syncDot','syncModal','syncTokenInput','syncFilterList'
   ].forEach(function(id) { $[id] = document.getElementById(id); });
 }
 
@@ -622,14 +622,17 @@ function persistDeletedIds() {
    5. CLOUD SYNC
    ================================================================= */
 function updateSyncDot() {
-  $.syncDot.className = 'sync-dot ' + syncStatus;
-  $.syncBtn.title = syncToken ? '☁️ 云同步（可读写）' : '☁️ 自动拉取（只读，设置 Token 后可写入）';
+  $.syncDot.className = syncStatus;
+  $.btnPush.classList.toggle('no-token', !syncToken);
+  $.btnPush.title = syncToken ? '上传到云端' : '上传需要设置 Token';
 }
 
 function mergeNotes(localList, remoteList) {
   var map = {};
+  var remoteIds = new Set();
   localList.forEach(function(n) { map[n.id] = n; });
   remoteList.forEach(function(r) {
+    remoteIds.add(r.id);
     // Skip notes that were intentionally deleted locally (when token is set for push)
     if (syncToken && deletedNoteIds.includes(r.id)) return;
     var fixed = fixNote(r);
@@ -639,6 +642,19 @@ function mergeNotes(localList, remoteList) {
     } else if (map[r.id].syncStatus === 'synced' && r.updatedAt === map[r.id].updatedAt) {
       // Same version, keep synced status
       map[r.id].syncStatus = 'synced';
+    }
+  });
+  // Remove local 'synced' notes that no longer exist in remote (deleted from another device)
+  localList.forEach(function(n) {
+    if (!remoteIds.has(n.id)) {
+      if (n.syncStatus === 'synced') {
+        // Another device deleted this — remove locally too
+        delete map[n.id];
+      } else if (n.syncStatus === 'modified') {
+        // Deleted remotely but we have edits — keep as local
+        n.syncStatus = 'local';
+      }
+      // 'local' notes not in remote: keep (never synced yet)
     }
   });
   return Object.values(map).sort(function(a, b) { return b.updatedAt - a.updatedAt; });
@@ -718,27 +734,34 @@ function syncPush() {
   });
 }
 
-var scheduleSync = debounce(function() {
-  if (!syncToken) return;
-  // Pull first to get latest SHA, then push
+function doPull(silent) {
+  // Pull from cloud and merge (no token needed)
+  syncStatus = 'syncing'; updateSyncDot();
   syncPull().then(function(remote) {
     if (remote && remote.length > 0) {
+      var before = notes.length;
       notes = mergeNotes(notes, remote);
       persist();
       renderDash();
       renderDir();
+      var delta = notes.length - before;
+      if (!silent) showToast('📥 拉取完成，' + (delta >= 0 ? '新增 ' + delta : '删除 ' + (-delta)) + ' 条笔记');
+    } else {
+      if (!silent) showToast('云端暂无数据');
     }
-    return syncPush();
-  }).catch(function(e) {
+    syncStatus = 'ok'; updateSyncDot();
+  }).catch(function() {
     syncStatus = 'err'; updateSyncDot();
-    console.warn('Auto-sync failed:', e.message);
+    if (!silent) showToast('拉取失败，请检查网络', 'err');
   });
-}, 5000);
+}
 
-function doFullSync() {
+function doPush() {
+  // Push local data to cloud (requires token)
   if (!syncToken) { showToast('请先设置 GitHub Token', 'err'); openSyncSettings(); return; }
   syncStatus = 'syncing'; updateSyncDot();
-  var pullOk = false, merged = false;
+  var merged = false;
+  // Pull first for latest SHA, then push
   syncPull().then(function(remote) {
     if (remote && remote.length > 0) {
       notes = mergeNotes(notes, remote);
@@ -747,25 +770,14 @@ function doFullSync() {
       renderDash();
       renderDir();
     }
-    pullOk = true;
     return syncPush();
   }).then(function() {
-    // push already marks notes as synced and re-renders
     syncStatus = 'ok'; updateSyncDot();
-    if (!merged) {
-      // No merge happened but push might have updated state, re-render
-      renderDash();
-      renderDir();
-    }
-    showToast('同步完成 ✅');
+    if (!merged) { renderDash(); renderDir(); }
+    showToast('📤 上传完成 ✅');
   }).catch(function(e) {
-    syncStatus = pullOk ? 'ok' : 'err';
-    updateSyncDot();
-    if (pullOk) {
-      showToast('推送失败，稍后自动重试', 'err');
-    } else {
-      showToast('同步失败，请检查网络', 'err');
-    }
+    syncStatus = 'err'; updateSyncDot();
+    showToast('上传失败，请检查网络或 Token', 'err');
   });
 }
 
@@ -785,8 +797,8 @@ function saveSyncToken() {
   syncToken = token;
   localStorage.setItem('kb2_sync_token', token);
   closeSyncSettings();
-  showToast('Token 已保存，开始同步…');
-  doFullSync();
+  updateSyncDot();
+  showToast('Token 已保存，可点击 📤 上传');
 }
 
 /* =================================================================
@@ -1029,7 +1041,6 @@ function saveInlineNote(cardEl) {
   if (n.syncStatus === 'synced') n.syncStatus = 'modified';
 
   persist();
-  scheduleSync();
   expandedCardId = null;
   updateBc(null);
   renderDash();
@@ -1050,7 +1061,6 @@ function deleteInlineNote(cardEl) {
   }
   expandedCardId = null;
   persist();
-  scheduleSync();
   updateBc(null);
   renderDash();
   renderDir();
@@ -1069,7 +1079,6 @@ function addTagInline(inputEl) {
   n.updatedAt = Date.now();
   if (n.syncStatus === 'synced') n.syncStatus = 'modified';
   persist();
-  scheduleSync();
   // Update chips DOM without full re-render
   var chipsEl = cardEl.querySelector('.card-edit-tag-chips');
   chipsEl.innerHTML += '<span class="chip">' + esc(tag) + '<span class="x" data-tag="' + escA(tag) + '">&times;</span></span>';
@@ -1085,7 +1094,6 @@ function removeTagInline(tag, cardEl) {
   n.updatedAt = Date.now();
   if (n.syncStatus === 'synced') n.syncStatus = 'modified';
   persist();
-  scheduleSync();
   // Update chips DOM
   var chip = cardEl.querySelector('.card-edit-tag-chips .x[data-tag="' + escA(tag) + '"]');
   if (chip && chip.parentElement) chip.parentElement.remove();
@@ -1327,10 +1335,9 @@ function bindEvents() {
   // -- Import file --
   $.importFile.addEventListener('change', importData);
 
-  // -- Sync: topbar sync button --
-  $.syncBtn.addEventListener('click', function(e) {
-    if (e.target.closest('[data-action="openSync"]')) { openSyncSettings(); }
-  });
+  // -- Sync: pull / push buttons --
+  $.btnPull.addEventListener('click', function() { doPull(false); });
+  $.btnPush.addEventListener('click', function() { doPush(); });
 
   // -- Sync modal: delegation --
   $.syncModal.addEventListener('click', function(e) {
@@ -1408,22 +1415,7 @@ function init() {
   goDashboard();
 
   // Always pull from GitHub on load (public, no token needed)
-  syncStatus = 'syncing'; updateSyncDot();
-  syncPull().then(function(remote) {
-    if (remote && remote.length > 0) {
-      var oldCount = notes.length;
-      notes = mergeNotes(notes, remote);
-      persist();
-      renderDash();
-      renderDir();
-      if (notes.length !== oldCount) {
-        showToast('已从云端同步 ' + notes.length + ' 条笔记');
-      }
-    }
-    syncStatus = 'ok'; updateSyncDot();
-  }).catch(function() {
-    syncStatus = 'err'; updateSyncDot();
-  });
+  doPull(true);
 }
 
 document.addEventListener('DOMContentLoaded', init);
