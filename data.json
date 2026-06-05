@@ -8,7 +8,7 @@
     "videoUrl": "",
     "createdAt": 1780660157049,
     "updatedAt": 1780660162796,
-    "syncStatus": "synced"
+    "syncStatus": "local"
   },
   {
     "id": "n_1780660088440_jn2t75",
@@ -19,7 +19,7 @@
     "videoUrl": "",
     "createdAt": 1780660088440,
     "updatedAt": 1780660132384,
-    "syncStatus": "synced"
+    "syncStatus": "local"
   },
   {
     "id": "n_1780659582337_193z3m",
@@ -30,7 +30,7 @@
     "videoUrl": "",
     "createdAt": 1780659582337,
     "updatedAt": 1780659741355,
-    "syncStatus": "synced"
+    "syncStatus": "local"
   },
   {
     "id": "n_1780655112132_1v6exw",
@@ -41,6 +41,6 @@
     "videoUrl": "",
     "createdAt": 1780655112132,
     "updatedAt": 1780659484113,
-    "syncStatus": "synced"
+    "syncStatus": "local"
   }
 ]
