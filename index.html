@@ -640,16 +640,23 @@ function syncPush() {
 
 var scheduleSync = debounce(function() {
   if (!syncToken) return;
-  syncPush().then(function() {
-    console.log('Synced to GitHub');
+  // Pull first to get latest SHA, then push
+  syncPull().then(function(remote) {
+    if (remote && remote.length > 0) {
+      notes = mergeNotes(notes, remote);
+      persist();
+    }
+    return syncPush();
   }).catch(function(e) {
-    showToast('同步失败: ' + (e.message || '网络错误'), 'err');
+    syncStatus = 'err'; updateSyncDot();
+    console.warn('Auto-sync failed:', e.message);
   });
-}, 3000);
+}, 5000);
 
 function doFullSync() {
   if (!syncToken) { showToast('请先设置 GitHub Token', 'err'); openSyncSettings(); return; }
   syncStatus = 'syncing'; updateSyncDot();
+  var pullOk = false;
   syncPull().then(function(remote) {
     if (remote && remote.length > 0) {
       notes = mergeNotes(notes, remote);
@@ -657,11 +664,20 @@ function doFullSync() {
       renderDash();
       renderDir();
     }
+    pullOk = true;
     return syncPush();
   }).then(function() {
+    syncStatus = 'ok'; updateSyncDot();
     showToast('同步完成 ✅');
   }).catch(function(e) {
-    showToast('同步失败: ' + (e.message || '网络错误'), 'err');
+    syncStatus = pullOk ? 'ok' : 'err';
+    updateSyncDot();
+    // Only show error if push failed; pull-only errors are non-critical
+    if (pullOk) {
+      showToast('推送失败，稍后自动重试', 'err');
+    } else {
+      showToast('同步失败，请检查网络', 'err');
+    }
   });
 }
 
