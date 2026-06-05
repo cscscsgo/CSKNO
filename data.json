@@ -7,7 +7,8 @@
     "tags": [],
     "videoUrl": "",
     "createdAt": 1780660157049,
-    "updatedAt": 1780660162796
+    "updatedAt": 1780660162796,
+    "syncStatus": "synced"
   },
   {
     "id": "n_1780660088440_jn2t75",
@@ -17,7 +18,8 @@
     "tags": [],
     "videoUrl": "",
     "createdAt": 1780660088440,
-    "updatedAt": 1780660132384
+    "updatedAt": 1780660132384,
+    "syncStatus": "synced"
   },
   {
     "id": "n_1780659582337_193z3m",
