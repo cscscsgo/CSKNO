@@ -513,6 +513,7 @@ let notes            = [];
 let expandedCardId   = null;
 let activeTag        = null;
 let activeSyncFilter = null; // null|'synced'|'local'|'modified'
+let deletedNoteIds   = [];   // IDs of notes deleted locally (cleared after push)
 
 // Sync state
 const SYNC_OWNER = 'cscscsgo';
@@ -600,6 +601,9 @@ function loadNotes() {
   }
   try { var r = localStorage.getItem(STORE_KEY); notes = r ? JSON.parse(r).map(fixNote) : []; }
   catch(e) { notes = []; }
+  // Load deleted note IDs (for tracking deletions to sync to cloud)
+  try { var d = localStorage.getItem('kb2_deleted_ids'); deletedNoteIds = d ? JSON.parse(d) : []; }
+  catch(e) { deletedNoteIds = []; }
 }
 
 function getDataJson() { return JSON.stringify(notes); }
@@ -607,6 +611,11 @@ function getDataJson() { return JSON.stringify(notes); }
 function persist() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(notes)); }
   catch(e) { showToast('存储空间不足，请导出备份后清理旧数据', 'err'); }
+}
+
+function persistDeletedIds() {
+  try { localStorage.setItem('kb2_deleted_ids', JSON.stringify(deletedNoteIds)); }
+  catch(e) { /* silently fail */ }
 }
 
 /* =================================================================
@@ -621,6 +630,8 @@ function mergeNotes(localList, remoteList) {
   var map = {};
   localList.forEach(function(n) { map[n.id] = n; });
   remoteList.forEach(function(r) {
+    // Skip notes that were intentionally deleted locally (when token is set for push)
+    if (syncToken && deletedNoteIds.includes(r.id)) return;
     var fixed = fixNote(r);
     fixed.syncStatus = 'synced'; // Remote notes are synced
     if (!map[r.id] || r.updatedAt > map[r.id].updatedAt) {
@@ -690,6 +701,11 @@ function syncPush() {
     syncSha = d.content ? d.content.sha : syncSha;
     // Mark all notes as synced after successful push
     notes.forEach(function(n) { n.syncStatus = 'synced'; });
+    // Clear deleted IDs — deletion has been synced to cloud
+    if (deletedNoteIds.length > 0) {
+      deletedNoteIds = [];
+      persistDeletedIds();
+    }
     persist();
     syncStatus = 'ok'; updateSyncDot();
     renderDash();
@@ -1027,6 +1043,11 @@ function deleteInlineNote(cardEl) {
   if (!n) return;
   if (!confirm('删除「' + (n.title || '未命名') + '」？不可恢复。')) return;
   notes = notes.filter(function(x) { return x.id !== id; });
+  // Track deletion: with token → will be synced to cloud; without token → comes back on refresh
+  if (syncToken && !deletedNoteIds.includes(id)) {
+    deletedNoteIds.push(id);
+    persistDeletedIds();
+  }
   expandedCardId = null;
   persist();
   scheduleSync();
